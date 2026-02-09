@@ -1,0 +1,175 @@
+CREATE DATABASE helpdesk_ia
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_general_ci;
+USE helpdesk_ia;
+
+CREATE TABLE companies (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE branches (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  company_id INT NOT NULL,
+  name VARCHAR(150) NOT NULL,
+  city VARCHAR(100),
+  FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  description VARCHAR(150)
+);
+
+CREATE TABLE permissions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  module VARCHAR(50),
+  description VARCHAR(150)
+);
+
+CREATE TABLE role_permissions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  role_id INT NOT NULL,
+  permission_id INT NOT NULL,
+  UNIQUE (role_id, permission_id),
+  FOREIGN KEY (role_id) REFERENCES roles(id),
+  FOREIGN KEY (permission_id) REFERENCES permissions(id)
+);
+
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  branch_id INT NOT NULL,
+  role_id INT NOT NULL,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(150) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  status ENUM('activo','inactivo') DEFAULT 'activo',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (branch_id) REFERENCES branches(id),
+  FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+
+CREATE TABLE ticket_status (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE ticket_priority (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE tickets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  assigned_to INT NULL,
+  status_id INT NOT NULL,
+  priority_id INT NOT NULL,
+  subject VARCHAR(200),
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (assigned_to) REFERENCES users(id),
+  FOREIGN KEY (status_id) REFERENCES ticket_status(id),
+  FOREIGN KEY (priority_id) REFERENCES ticket_priority(id)
+);
+
+CREATE TABLE ticket_messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ticket_id INT NOT NULL,
+  sender_type ENUM('usuario','ia') NOT NULL,
+  sender_id INT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id),
+  FOREIGN KEY (sender_id) REFERENCES users(id)
+);
+
+CREATE TABLE ticket_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ticket_id INT NOT NULL,
+  user_id INT NOT NULL,
+  action VARCHAR(150),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE equipment_status (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE equipment (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  branch_id INT NOT NULL,
+  status_id INT NOT NULL,
+  serial VARCHAR(100),
+  model VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (branch_id) REFERENCES branches(id),
+  FOREIGN KEY (status_id) REFERENCES equipment_status(id)
+);
+
+CREATE TABLE equipment_assignments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  equipment_id INT NOT NULL,
+  user_id INT NOT NULL,
+  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  returned_at TIMESTAMP NULL,
+  FOREIGN KEY (equipment_id) REFERENCES equipment(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE equipment_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  equipment_id INT NOT NULL,
+  user_id INT NOT NULL,
+  action VARCHAR(150),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (equipment_id) REFERENCES equipment(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO companies (name) VALUES ('Empresa Demo');
+
+INSERT INTO branches (company_id, name, city)
+VALUES (1, 'Sucursal Principal', 'Bogotá');
+INSERT INTO roles (name, description) VALUES
+('admin', 'Administrador del sistema'),
+('soporte', 'Personal de soporte'),
+('usuario', 'Usuario final');
+
+INSERT INTO permissions (name, module, description) VALUES
+('create_ticket','tickets','Crear ticket'),
+('view_ticket','tickets','Ver ticket'),
+('assign_ticket','tickets','Asignar ticket'),
+('close_ticket','tickets','Cerrar ticket'),
+('manage_users','usuarios','Gestionar usuarios');
+INSERT INTO role_permissions (role_id, permission_id) VALUES
+(1,1),(1,2),(1,3),(1,4),(1,5),
+(2,2),(2,3),(2,4),
+(3,1),(3,2);
+
+INSERT INTO users (branch_id, role_id, name, email, password) VALUES
+(1,1,'Admin General','admin@demo.com','123456'),
+(1,2,'Soporte TI','soporte@demo.com','123456'),
+(1,3,'Usuario Final','usuario@demo.com','123456');
+INSERT INTO ticket_status (name) VALUES ('Pendiente'),('En proceso'),('Cerrado');
+
+INSERT INTO ticket_priority (name) VALUES ('Baja'),('Media'),('Alta');
+INSERT INTO tickets (user_id, assigned_to, status_id, priority_id, subject, description)
+VALUES (3,2,1,3,'No puedo acceder al correo','El sistema no permite iniciar sesión');
+
+INSERT INTO ticket_messages (ticket_id, sender_type, sender_id, message) VALUES
+(1,'usuario',3,'No puedo entrar a mi correo'),
+(1,'ia',NULL,'He creado un ticket con prioridad alta. Un soporte lo atenderá.');
+INSERT INTO equipment_status (name) VALUES ('Disponible'),('Asignado'),('En reparación');
+
+INSERT INTO equipment (branch_id, status_id, serial, model)
+VALUES (1,1,'PC-001','Dell Optiplex 7090');
+INSERT INTO equipment_assignments (equipment_id, user_id)
+VALUES (1,3);
